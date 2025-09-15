@@ -196,7 +196,26 @@ def get_comparison_pair():
 
 
 
-
+ADMIN_PASSWORD = "123"
+# 数据看板链接：https://medical-dialogue-annotation.onrender.com/results?password=123
+@app.route('/results')
+def view_results():
+    """创建一个受密码保护的页面来显示数据库中的所有标注结果"""
+    # 1. 从URL参数中获取密码 (e.g., /results?password=...)
+    password = request.args.get('password')
+    # 2. 验证密码
+    if password != ADMIN_PASSWORD:
+        return "<h1>访问被拒绝</h1><p>请提供正确的访问密码。</p>", 403 # 403 Forbidden
+    # 3. 如果密码正确，则从数据库查询数据
+    try:
+        # 查询所有标注记录，并按时间倒序排列（最新的在最前）
+        all_annotations = Annotation.query.order_by(Annotation.timestamp.desc()).all()
+        # 4. 渲染 results.html 模板，并将查询结果传入
+        return render_template('results.html', annotations=all_annotations, count=len(all_annotations))
+    except Exception as e:
+        # 如果数据库查询出错，返回错误信息
+        print(f"Error fetching results: {e}")
+        return "<h1>查询数据时出错</h1><p>请检查服务器日志。</p>", 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5002, debug=False)

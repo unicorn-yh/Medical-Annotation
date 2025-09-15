@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>标注结果查看 ({{ count }} 条)</title>
+    <style>
+        body { font-family: sans-serif; margin: 2em; background-color: #f4f7f9; }
+        h1 { color: #333; }
+        .results-table { border-collapse: collapse; width: 100%; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .results-table th, .results-table td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        .results-table th { background-color: #7d00b3; color: white; }
+        .results-table tr:nth-child(even) { background-color: #f2f2f2; }
+        .results-table tr:hover { background-color: #ddd; }
+    </style>
+</head>
+<body>
+    <h1>标注结果 (共 {{ count }} 条记录)</h1>
+    <p><a href="/">返回标注页面</a></p>
+    <table class="results-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>时间戳</th>
+                <th>标注员</th>
+                <th>Case ID</th>
+                <th>模型A</th>
+                <th>模型B</th>
+                <th>连贯性优胜者</th>
+                <th>一致性优胜者</th>
+                <th>清晰度优胜者</th>
+                <th>共情优胜者</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for annotation in annotations %}
+            <tr>
+                <td>{{ annotation.id }}</td>
+                <td>{{ annotation.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                <td>{{ annotation.annotator_id }}</td>
+                <td>{{ annotation.case_id }}</td>
+                <td>{{ annotation.model_a }}</td>
+                <td>{{ annotation.model_b }}</td>
+                <td>{{ annotation.winner_coherence }}</td>
+                <td>{{ annotation.winner_adherence }}</td>
+                <td>{{ annotation.winner_clarity }}</td>
+                <td>{{ annotation.winner_empathy }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
