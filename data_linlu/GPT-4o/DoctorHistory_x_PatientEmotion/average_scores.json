@@ -1,0 +1,16 @@
+{
+  "task_success": {
+    "accuracy": 0.48,
+    "robustness": 0.0
+  },
+  "info_quality": null,
+  "diag_manage": {
+    "adherence": 0.994,
+    "coherence": 0.718
+  },
+  "efficiency": null,
+  "experience": {
+    "clarity": 0.79,
+    "empathy": 0.526
+  }
+}

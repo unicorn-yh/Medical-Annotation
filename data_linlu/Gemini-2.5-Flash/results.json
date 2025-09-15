@@ -1,0 +1,23 @@
+[
+  {
+    "doctor": "doctor_history",
+    "patient": "patient_emotion",
+    "result": {
+      "task_success": {
+        "accuracy": 0.53,
+        "robustness": 0.0
+      },
+      "info_quality": null,
+      "diag_manage": {
+        "adherence": 0.99,
+        "coherence": 0.792
+      },
+      "efficiency": null,
+      "experience": {
+        "clarity": 0.778,
+        "empathy": 0.518
+      }
+    },
+    "time": "1371.58s"
+  }
+]

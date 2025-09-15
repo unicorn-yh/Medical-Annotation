@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>医疗对话多维度评估平台</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏥 医疗对话多维度评估平台</h1>
+            <div class="header-info">
+                <p id="annotator-info"><strong>标注员ID: <span id="annotator-id-display"></span></strong></p>
+                <p id="progress-info"><strong>🎯 答题进度: <span id="progress-display">加载中...</span></strong></p>
+            </div>
+        </header>
+        <div class="info-container">
+            <div class="instructions">
+                <h2>操作指示 🚀</h2>
+                <ol>
+                    <li>请仔细阅读下方左右两侧的医患对话。</li>
+                    <li>针对下方的<strong>4个评估维度</strong>，分别为两个医生模型的问诊质量做出优劣选择。</li>
+                    <li><strong>所有维度都必须选择</strong>后，“提交”按钮才会激活。</li>
+                    <li>点击“提交”后，系统将自动加载下一组对比。</li>
+                </ol>
+            </div>
+
+            <div class="case-info">
+                <h2><strong>标注参考（患者疾病信息）👇</strong></h2>
+                <p><strong>疾病类别：</strong> <span id="case-category"></span></p>
+                <p><strong>疾病选项：</strong> <span id="disease-choices"></span></p>
+            </div>
+        </div>
+        <div id="loading-message" style="display: none; text-align: center; padding: 20px;">正在加载...</div>
+        <div id="completion-message" style="display: none; text-align: center; padding: 20px; font-size: 1.5em; color: green;"></div>
+
+        <div class="comparison-container" id="comparison-view">
+            <div class="dialogue-column" id="model-a-column">
+                <h2 id="model-a-name">模型 A</h2>
+                <div class="dialogue-content" id="model-a-dialogue"></div>
+            </div>
+            <div class="dialogue-column" id="model-b-column">
+                <h2 id="model-b-name">模型 B</h2>
+                <div class="dialogue-content" id="model-b-dialogue"></div>
+            </div>
+        </div>
+
+        <div class="controls" id="controls-view">
+            <div class="metrics-wrapper">
+                <div class="metric-group" data-metric="coherence">
+                    <h4>1. 探询效率 / 连贯性（Coherence）</h4>
+                    <p class="metric-desc">模型是否通过少量且逻辑连贯的问题快速抓住核心信息/鉴别诊断？是否出现不必要的重复提问？</p>
+                    <div class="btn-group">
+                        <button class="choice-btn" data-choice="model_a">左侧更好</button>
+                        <button class="choice-btn" data-choice="tie">两者相当</button>
+                        <button class="choice-btn" data-choice="model_b">右侧更好</button>
+                    </div>
+                </div>
+
+                <div class="metric-group" data-metric="adherence">
+                    <h4>2. 角色一致性（Adherence）</h4>
+                    <p class="metric-desc">模型是否始终保持了专业医生的角色，避免了AI化的、机械的语言？</p>
+                    <div class="btn-group">
+                        <button class="choice-btn" data-choice="model_a">左侧更好</button>
+                        <button class="choice-btn" data-choice="tie">两者相当</button>
+                        <button class="choice-btn" data-choice="model_b">右侧更好</button>
+                    </div>
+                </div>
+
+                <div class="metric-group" data-metric="clarity">
+                    <h4>3. 清晰度（Clarity）</h4>
+                    <p class="metric-desc">模型提出的问题，在语言表达上是否清晰、简洁、易于患者理解？</p>
+                    <div class="btn-group">
+                        <button class="choice-btn" data-choice="model_a">左侧更好</button>
+                        <button class="choice-btn" data-choice="tie">两者相当</button>
+                        <button class="choice-btn" data-choice="model_b">右侧更好</button>
+                    </div>
+                </div>
+                
+                <div class="metric-group" data-metric="empathy">
+                    <h4>4. 共情与尊重（Empathy）</h4>
+                    <p class="metric-desc">模型的语气是否充满关怀、尊重和支持性？</p>
+                    <div class="btn-group">
+                        <button class="choice-btn" data-choice="model_a">左侧更好</button>
+                        <button class="choice-btn" data-choice="tie">两者相当</button>
+                        <button class="choice-btn" data-choice="model_b">右侧更好</button>
+                    </div>
+                </div>
+            </div>
+
+            
+
+            
+            <hr>
+            <button id="submit-all-btn" disabled>提交所有评测</button>
+        </div>
+         </div>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <div id="completion-overlay" class="overlay">
+        <div class="completion-box">
+            <h1>🎉 标注完成! 🎉</h1>
+            <p>非常感谢您的辛勤工作！</p>
+            <p>所有分配给您的标注任务均已完成，您可以安全地关闭此浏览器页面。</p>
+        </div>
+    </div>
+</body>
+</html>

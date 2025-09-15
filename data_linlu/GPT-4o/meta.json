@@ -1,0 +1,25 @@
+{
+  "doctor": {
+    "model": "gpt-4o-2024-08-06",
+    "doctor_list": "doctor_history",
+    "max_questions": "10",
+    "with_choices": "True"
+  },
+  "patient": {
+    "model": "gpt-4o-mini",
+    "patient_list": "patient_emotion",
+    "data_path": "data/profiles/medqa.jsonl",
+    "start_index": "0",
+    "test_num": "100"
+  },
+  "evaluation": {
+    "mode": "interact+evaluate",
+    "incremental_diagnosis": "True",
+    "dimensions": "task_success, dialog_manage, experience",
+    "max_processes": "100",
+    "max_processes_patient": "100",
+    "log_folder": "log",
+    "diagnose_model": "gpt-4o-mini",
+    "judge_model": "gpt-4o-mini"
+  }
+}
