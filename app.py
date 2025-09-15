@@ -1,4 +1,3 @@
-# app.py (Updated Version)
 import os
 import json
 import random
@@ -9,11 +8,11 @@ from flask_sqlalchemy import SQLAlchemy
 app = Flask(__name__)
 
 # --- 数据库配置 ---
-# 从环境变量中获取数据库连接地址
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
+# --- 数据库模型定义 ---
 class Annotation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     annotator_id = db.Column(db.String(80), nullable=False)
@@ -26,49 +25,21 @@ class Annotation(db.Model):
     winner_empathy = db.Column(db.String(80), nullable=False)
     timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
-
+# 注意：在生产环境中，此命令最好只在初始化时运行一次。
+# 在Render上，可以在Blueprint设置中使用 one-off job 来执行。
 with app.app_context():
     db.create_all()
 
-# (This function does not need changes)
-@app.route('/submit_annotation', methods=['POST'])
-def submit_annotation():
-    """接收并保存前端提交的标注结果到数据库"""
-    data = request.json
-    # ... (您的数据校验部分保持不变) ...
-
-    # 创建一个新的 Annotation 对象
-    new_annotation = Annotation(
-        annotator_id=data['annotator_id'],
-        case_id=data['case_id'],
-        model_a=data['model_a'],
-        model_b=data['model_b'],
-        winner_coherence=data['winners']['coherence'],
-        winner_adherence=data['winners']['adherence'],
-        winner_clarity=data['winners']['clarity'],
-        winner_empathy=data['winners']['empathy'],
-        timestamp=datetime.now() # 使用本地时间或utcnow
-    )
-
-    # 将新记录添加到数据库会话并提交
-    try:
-        db.session.add(new_annotation)
-        db.session.commit()
-        return jsonify({"success": True})
-    except Exception as e:
-        db.session.rollback()
-        print(f"Database error: {e}")
-        return jsonify({"error": "Failed to save to database"}), 500
-
-
+# --- 源对话数据加载 ---
 DATA_DIR = './data'
-RESULTS_FILE = 'results.jsonl'
 
-
-# 1. MODIFIED: This function is updated to handle the new JSON structure and wrap dialogue in HTML.
 def load_data():
-    """将所有模型数据加载并按 case_id 组织"""
+    """将所有源对话模型数据从文件加载并按 case_id 组织"""
     all_data = {}
+    if not os.path.exists(DATA_DIR):
+        print(f"Warning: Data directory '{DATA_DIR}' not found.")
+        return {}
+        
     model_files = [f for f in os.listdir(DATA_DIR) if f.endswith('.jsonl')]
     for file_name in model_files:
         model_name = os.path.splitext(file_name)[0]
@@ -77,24 +48,17 @@ def load_data():
                 try:
                     record = json.loads(line)
                     case_id = record.get('case_id')
-                    if not case_id:
-                        continue
+                    if not case_id: continue
                     
-                    # --- NEW: Format the 'interactions' array into an HTML dialogue string ---
                     interactions = record.get('interactions', [])
                     dialogue_parts = []
                     for turn in interactions:
                         if isinstance(turn, list) and len(turn) == 2:
-                            # Wrap doctor's turn in a div with class "doctor-turn"
                             dialogue_parts.append(f'<div class="doctor-turn">医生: {turn[0]}</div>')
-                            # Wrap patient's turn in a div with class "patient-turn"
                             dialogue_parts.append(f'<div class="patient-turn">患者: {turn[1]}</div>')
                     
-                    # Join the HTML parts together
-                    formatted_dialogue = "".join(dialogue_parts)
-                    formatted_dialogue = formatted_dialogue.replace('*','')
-                    # --- END NEW ---
-
+                    formatted_dialogue = "".join(dialogue_parts).replace('*','')
+                    
                     if case_id not in all_data:
                         all_data[case_id] = {}
                     
@@ -103,28 +67,30 @@ def load_data():
                         "choices": record.get("choices", "N/A"),
                         "category": record.get("category", "N/A")
                     }
-
                 except json.JSONDecodeError:
                     print(f"Warning: Skipping invalid JSON line in {file_name}")
     return all_data
 
-
+# --- 【新版本】从数据库获取已完成任务 ---
 def get_completed_annotations(annotator_id):
-    """获取指定标注员已完成的任务"""
+    """从数据库获取指定标注员已完成的任务"""
     completed = set()
-    if not os.path.exists(RESULTS_FILE):
-        return completed
-    with open(RESULTS_FILE, 'r', encoding='utf-8') as f:
-        for line in f:
-            record = json.loads(line)
-            if record.get('annotator_id') == annotator_id:
-                models = tuple(sorted((record['model_a'], record['model_b'])))
-                completed.add((record['case_id'], models))
+    try:
+        annotations = db.session.query(Annotation).filter_by(
+            annotator_id=annotator_id
+        ).with_entities(
+            Annotation.case_id, Annotation.model_a, Annotation.model_b
+        ).all()
+
+        for ann in annotations:
+            models = tuple(sorted((ann.model_a, ann.model_b)))
+            completed.add((ann.case_id, models))
+    except Exception as e:
+        print(f"Database error in get_completed_annotations: {e}")
     return completed
 
-# (This section does not need changes)
+# --- 应用启动时加载和计算 ---
 organized_data = load_data()
-all_models = list(set(model for case in organized_data.values() for model in case.keys()))
 all_cases = list(organized_data.keys())
 
 def calculate_total_pairs(data):
@@ -133,22 +99,18 @@ def calculate_total_pairs(data):
     for case_id in data:
         models_in_case = list(data[case_id].keys())
         if len(models_in_case) >= 2:
-            # This calculates combinations of 2 from the number of models
             total += len(models_in_case) * (len(models_in_case) - 1) // 2
     return total
 
 TOTAL_PAIRS = calculate_total_pairs(organized_data)
 
+# --- 网页路由 ---
 @app.route('/')
 def index():
-    """渲染主页面"""
     return render_template('index.html')
 
-
-# MODIFIED: This function is updated to send the new contextual info.
 @app.route('/get_comparison_pair')
 def get_comparison_pair():
-    """为前端提供一个随机的、未被标注过的对话对"""
     annotator_id = request.args.get('annotator_id')
     if not annotator_id:
         return jsonify({"error": "Annotator ID is required"}), 400
@@ -159,8 +121,7 @@ def get_comparison_pair():
     possible_pairs = []
     for case_id in all_cases:
         models_in_case = list(organized_data[case_id].keys())
-        if len(models_in_case) < 2:
-            continue
+        if len(models_in_case) < 2: continue
         for i in range(len(models_in_case)):
             for j in range(i + 1, len(models_in_case)):
                 model1, model2 = models_in_case[i], models_in_case[j]
@@ -176,44 +137,61 @@ def get_comparison_pair():
         })
     
     case_id, model_a, model_b = random.choice(possible_pairs)
-    
     if random.random() < 0.5:
         model_a, model_b = model_b, model_a
 
-    # --- NEW: Add 'category' and 'task' to the response ---
-    data_for_case = organized_data[case_id][model_a] # Get context from one of the models
+    data_for_case = organized_data.get(case_id, {}).get(model_a, {})
     pair = {
         "case_id": case_id,
-        "category": data_for_case.get('category'),
-        "choices": data_for_case.get('choices'),
-        "model_a_info": {"name": model_a, "dialogue": organized_data[case_id][model_a]['dialogue']},
-        "model_b_info": {"name": model_b, "dialogue": organized_data[case_id][model_b]['dialogue']}
+        "category": data_for_case.get('category', 'N/A'),
+        "choices": data_for_case.get('choices', 'N/A'),
+        "model_a_info": {"name": model_a, "dialogue": organized_data.get(case_id, {}).get(model_a, {}).get('dialogue', '')},
+        "model_b_info": {"name": model_b, "dialogue": organized_data.get(case_id, {}).get(model_b, {}).get('dialogue', '')}
     }
     pair["progress_completed"] = completed_count
     pair["progress_total"] = TOTAL_PAIRS
-    # --- END NEW ---
     return jsonify(pair)
 
+@app.route('/submit_annotation', methods=['POST'])
+def submit_annotation():
+    data = request.json
+    required_fields = ['annotator_id', 'case_id', 'model_a', 'model_b', 'winners']
+    if not all(field in data for field in required_fields) or not all(key in data['winners'] for key in ['coherence', 'adherence', 'clarity', 'empathy']):
+        return jsonify({"error": "Missing data"}), 400
+        
+    new_annotation = Annotation(
+        annotator_id=data['annotator_id'],
+        case_id=data['case_id'],
+        model_a=data['model_a'],
+        model_b=data['model_b'],
+        winner_coherence=data['winners']['coherence'],
+        winner_adherence=data['winners']['adherence'],
+        winner_clarity=data['winners']['clarity'],
+        winner_empathy=data['winners']['empathy'],
+        timestamp=datetime.now()
+    )
 
+    try:
+        db.session.add(new_annotation)
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Database error: {e}")
+        return jsonify({"error": "Failed to save to database"}), 500
 
 ADMIN_PASSWORD = "123"
-# 数据看板链接：https://medical-dialogue-annotation.onrender.com/results?password=123
+
 @app.route('/results')
 def view_results():
-    """创建一个受密码保护的页面来显示数据库中的所有标注结果"""
-    # 1. 从URL参数中获取密码 (e.g., /results?password=...)
     password = request.args.get('password')
-    # 2. 验证密码
     if password != ADMIN_PASSWORD:
-        return "<h1>访问被拒绝</h1><p>请提供正确的访问密码。</p>", 403 # 403 Forbidden
-    # 3. 如果密码正确，则从数据库查询数据
+        return "<h1>访问被拒绝</h1><p>请提供正确的访问密码。</p>", 403
+
     try:
-        # 查询所有标注记录，并按时间倒序排列（最新的在最前）
         all_annotations = Annotation.query.order_by(Annotation.timestamp.desc()).all()
-        # 4. 渲染 results.html 模板，并将查询结果传入
         return render_template('results.html', annotations=all_annotations, count=len(all_annotations))
     except Exception as e:
-        # 如果数据库查询出错，返回错误信息
         print(f"Error fetching results: {e}")
         return "<h1>查询数据时出错</h1><p>请检查服务器日志。</p>", 500
 
