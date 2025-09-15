@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const urlParams = new URLSearchParams(window.location.search);
         let id = urlParams.get('annotator_id');
         if (!id) {
-            id = prompt("请输入您的标注员ID (例如: doctor_wang):");
+            id = prompt("请输入您的标注员ID (例如: doctor_wang)，请固定使用相同的ID:");
             if (!id) {
                 alert("必须提供标注员ID才能开始！");
                 return null;
