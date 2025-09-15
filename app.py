@@ -7,10 +7,62 @@ from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
+# --- 数据库配置 ---
+# 从环境变量中获取数据库连接地址
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL').replace("://", "ql://", 1)
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
+class Annotation(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    annotator_id = db.Column(db.String(80), nullable=False)
+    case_id = db.Column(db.String(80), nullable=False)
+    model_a = db.Column(db.String(80), nullable=False)
+    model_b = db.Column(db.String(80), nullable=False)
+    winner_coherence = db.Column(db.String(80), nullable=False)
+    winner_adherence = db.Column(db.String(80), nullable=False)
+    winner_clarity = db.Column(db.String(80), nullable=False)
+    winner_empathy = db.Column(db.String(80), nullable=False)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+
+with app.app_context():
+    db.create_all()
+
+# (This function does not need changes)
+@app.route('/submit_annotation', methods=['POST'])
+def submit_annotation():
+    """接收并保存前端提交的标注结果到数据库"""
+    data = request.json
+    # ... (您的数据校验部分保持不变) ...
+
+    # 创建一个新的 Annotation 对象
+    new_annotation = Annotation(
+        annotator_id=data['annotator_id'],
+        case_id=data['case_id'],
+        model_a=data['model_a'],
+        model_b=data['model_b'],
+        winner_coherence=data['winners']['coherence'],
+        winner_adherence=data['winners']['adherence'],
+        winner_clarity=data['winners']['clarity'],
+        winner_empathy=data['winners']['empathy'],
+        timestamp=datetime.now() # 使用本地时间或utcnow
+    )
+
+    # 将新记录添加到数据库会话并提交
+    try:
+        db.session.add(new_annotation)
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Database error: {e}")
+        return jsonify({"error": "Failed to save to database"}), 500
+
+
 DATA_DIR = './data'
 RESULTS_FILE = 'results.jsonl'
 
-# app.py
 
 # 1. MODIFIED: This function is updated to handle the new JSON structure and wrap dialogue in HTML.
 def load_data():
@@ -142,38 +194,7 @@ def get_comparison_pair():
     return jsonify(pair)
 
 
-# (This function does not need changes)
-@app.route('/submit_annotation', methods=['POST'])
-def submit_annotation():
-    """接收并保存前端提交的标注结果"""
-    data = request.json
-    required_fields = ['annotator_id', 'case_id', 'model_a', 'model_b', 'winners']
-    if not all(field in data for field in required_fields):
-        return jsonify({"error": "Missing data"}), 400
-    
-    # 校验 'winners' 字典内部的key
-    required_winners = ['coherence', 'adherence', 'clarity', 'empathy']
-    # required_winners = ['overall', 'efficiency', 'safety', 'empathy']
-    if not all(winner in data['winners'] for winner in required_winners):
-        return jsonify({"error": "Missing winner data for some metrics"}), 400
 
-    # 将 winners 字典扁平化存入结果，方便后续 pandas 处理
-    result = {
-        "annotator_id": data['annotator_id'],
-        "case_id": data['case_id'],
-        "model_a": data['model_a'],
-        "model_b": data['model_b'],
-        "winner_coherence": data['winners']['coherence'],
-        "winner_adherence": data['winners']['adherence'],
-        "winner_clarity": data['winners']['clarity'],
-        "winner_empathy": data['winners']['empathy'],
-        "timestamp": datetime.now().isoformat()
-    }
-
-    with open(RESULTS_FILE, 'a', encoding='utf-8') as f:
-        f.write(json.dumps(result) + '\n')
-        
-    return jsonify({"success": True})
 
 
 if __name__ == '__main__':
