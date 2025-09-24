@@ -1,3 +1,4 @@
+# app.py
 import os
 import json
 import random
@@ -7,6 +8,7 @@ from flask_sqlalchemy import SQLAlchemy
 import pandas as pd
 from calculate_ranking import calculate_win_rates_from_df
 from calculate_agreement import calculate_agreements_from_df
+from app import app, db
 
 app = Flask(__name__)
 
