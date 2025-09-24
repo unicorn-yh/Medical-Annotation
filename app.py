@@ -191,7 +191,7 @@ def get_comparison_pair():
     return jsonify(pair)
 
 
-    
+
 @app.route('/submit_annotation', methods=['POST'])
 def submit_annotation():
     data = request.json
@@ -243,6 +243,8 @@ def get_data_as_dataframe(db_session):
     df = pd.read_sql(query, db_session.bind)
     return df
 
+
+# https://medical-dialogue-annotation.onrender.com/analytics?password=123
 @app.route('/analytics')
 def view_analytics():
     """Renders the analytics dashboard with rankings and agreement scores."""
