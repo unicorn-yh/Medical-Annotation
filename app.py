@@ -6,7 +6,7 @@ from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 import pandas as pd
 from calculate_ranking import calculate_win_rates_from_df
-from calculate_agreement import calculate_kappas_from_df
+from calculate_agreement import calculate_agreements_from_df
 
 app = Flask(__name__)
 
