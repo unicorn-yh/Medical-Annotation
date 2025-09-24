@@ -8,7 +8,6 @@ from flask_sqlalchemy import SQLAlchemy
 import pandas as pd
 from calculate_ranking import calculate_win_rates_from_df
 from calculate_agreement import calculate_agreements_from_df
-from app import app, db
 
 app = Flask(__name__)
 
@@ -54,7 +53,8 @@ def load_data():
             for line in f:
                 try:
                     record = json.loads(line)
-                    case_id = record.get('case_id')
+                    # case_id = record.get('case_id')
+                    case_id = str(record.get('case_id'))
                     if not case_id: continue
                     
                     interactions = record.get('interactions', [])
@@ -116,9 +116,6 @@ TOTAL_PAIRS = calculate_total_pairs(organized_data)
 def index():
     return render_template('index.html')
 
-# app.py
-
-# ... (您的其他代码，包括 ANNOTATOR_LIST 和数据库模型定义保持不变) ...
 
 # 这是一个一次性生成的全量任务列表，为了保证分配的稳定性
 # 我们在生成它时对 case_id 和 models 都进行了排序
@@ -159,7 +156,7 @@ def get_comparison_pair():
     # 使用集合(set)运算提高效率
     my_assigned_tasks_set = set(my_assigned_tasks)
     my_pending_tasks = list(my_assigned_tasks_set - completed_by_me)
-    
+
     # --- 步骤 4: 计算正确的个人进度 ---
     my_completed_count = my_total_tasks - len(my_pending_tasks)
 
