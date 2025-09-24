@@ -11,10 +11,23 @@
         .results-table th { background-color: #7d00b3; color: white; }
         .results-table tr:nth-child(even) { background-color: #f2f2f2; }
         .results-table tr:hover { background-color: #ddd; }
+        .header-actions { display: flex; justify-content: space-between; align-items: center; }
+        .export-btn { 
+            display: inline-block;
+            padding: 8px 15px;
+            background-color: #198754;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
     </style>
 </head>
 <body>
-    <h1>标注结果 (共 {{ count }} 条记录)</h1>
+    <div class="header-actions">
+        <h1>标注结果 (共 {{ count }} 条记录)</h1>
+        <a href="/export/csv?password={{ request.args.get('password') }}" class="export-btn">导出为 CSV</a>
+    </div>
     <p><a href="/">返回标注页面</a></p>
     <table class="results-table">
         <thead>
